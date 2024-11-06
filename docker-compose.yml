@@ -1,0 +1,72 @@
+version: '3.9'
+services:
+  user-postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${USER_SERVICE_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${USER_SERVICE_DATABASE_PASSWORD}
+      POSTGRES_DB: userdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - user-postgres-data:/var/lib/postgresql/data
+
+  token-postgres:
+   image: postgres:17
+   environment:
+     POSTGRES_USER: ${TOKEN_SERVICE_DATABASE_USERNAME}
+     POSTGRES_PASSWORD: ${TOKEN_SERVICE_DATABASE_PASSWORD}
+     POSTGRES_DB: tokendb
+   ports:
+     - "5433:5432"
+   volumes:
+     - token-postgres-data:/var/lib/postgresql/data
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    environment:
+      USER_SERVICE_DATABASE_URL: ${USER_SERVICE_DATABASE_URL}
+      USER_SERVICE_DATABASE_USERNAME: ${USER_SERVICE_DATABASE_USERNAME}
+      USER_SERVICE_DATABASE_PASSWORD: ${USER_SERVICE_DATABASE_PASSWORD}
+      TOKEN_SERVICE_URL: ${TOKEN_SERVICE_URL}
+    depends_on:
+      - user-postgres
+    ports:
+      - "8080:8080"
+
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    environment:
+      EMAIL_SERVICE_VERIFICATION_BASE_URL: ${EMAIL_SERVICE_VERIFICATION_BASE_URL}
+      EMAIL_SERVICE_VERIFICATION_VERIFY_URL: ${EMAIL_SERVICE_VERIFICATION_VERIFY_URL}
+      EMAIL_SERVICE_EMAIL_USERNAME: ${EMAIL_SERVICE_EMAIL_USERNAME}
+      EMAIL_SERVICE_EMAIL_PASSWORD: ${EMAIL_SERVICE_EMAIL_PASSWORD}
+      USER_SERVICE_URL: ${USER_SERVICE_URL}
+      TOKEN_SERVICE_URL: ${TOKEN_SERVICE_URL}
+    depends_on:
+      - user-service
+      - token-service
+    ports:
+      - "8081:8081"
+
+  token-service:
+   build:
+     context: ./token-service
+     dockerfile: Dockerfile
+   environment:
+     TOKEN_SERVICE_DATABASE_URL: ${TOKEN_SERVICE_DATABASE_URL}
+     TOKEN_SERVICE_DATABASE_USERNAME: ${TOKEN_SERVICE_DATABASE_USERNAME}
+     TOKEN_SERVICE_DATABASE_PASSWORD: ${TOKEN_SERVICE_DATABASE_PASSWORD}
+     USER_SERVICE_URL: ${USER_SERVICE_URL}
+   depends_on:
+     - token-postgres
+   ports:
+     - "8082:8082"
+
+volumes:
+  user-postgres-data:
+  token-postgres-data:
